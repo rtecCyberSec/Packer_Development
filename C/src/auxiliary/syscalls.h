@@ -66,9 +66,9 @@ typedef struct _SYSTEM_PROCESS_INFORMATION {
 } SYSTEM_PROCESS_INFORMATION, *PSYSTEM_PROCESS_INFORMATION;
 
 typedef struct _SYSCALL_ENTRY {
-    int syscallNumber;
+    INT syscallNumber;
     PVOID syscallInstructionAddress;
-    char syscallName[MAX_PATH];
+    CHAR syscallName[MAX_PATH];
 } SYSCALL_ENTRY;
 
 // --------------------------------------
@@ -77,7 +77,7 @@ typedef struct _SYSCALL_ENTRY {
 #define SYSCALL_TABLE_SIZE 256
 SYSCALL_ENTRY* syscallTable[SYSCALL_TABLE_SIZE] = { 0 };
 
-void PrepareSyscall(DWORD dwSycallNr, PVOID dw64Gate);
+VOID PrepareSyscall(DWORD dwSycallNr, PVOID dw64Gate);
 
 // --------------------------------------
 // Syscalls to resolve
@@ -170,7 +170,7 @@ PopulateSyscallMap(
             SYSCALL_ENTRY* currentSyscall = (SYSCALL_ENTRY*)malloc(sizeof(SYSCALL_ENTRY));
             currentSyscall->syscallNumber = 0; // will be filled later when sorting
             currentSyscall->syscallInstructionAddress =  syscallInstructionAddr;
-            memcpy(currentSyscall->syscallName, sTmpFuncName, strlen(sTmpFuncName));
+            RtlCopyMemory(currentSyscall->syscallName, sTmpFuncName, strlen(sTmpFuncName));
             syscallTable[currentSyscallNumber] = currentSyscall;
             currentSyscallNumber++;
         }
@@ -194,7 +194,7 @@ GetSyscallEntry(
     PCHAR name
 )
 {
-    for (int i=0; i<SYSCALL_TABLE_SIZE; ++i)
+    for (INT i=0; i<SYSCALL_TABLE_SIZE; ++i)
     {
         SYSCALL_ENTRY* entry = syscallTable[i];
         if (strcmp(entry->syscallName, name) == 0)
@@ -213,7 +213,7 @@ GetSyscallEntry(
 VOID 
 FreeSyscallMap()
 {
-    for (int i=0; i<SYSCALL_TABLE_SIZE; ++i)
+    for (INT i=0; i<SYSCALL_TABLE_SIZE; ++i)
     {
         SYSCALL_ENTRY* entry = syscallTable[i];
         free(entry);

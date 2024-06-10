@@ -10,11 +10,11 @@ PrepareSyscall:
 
 global Syscall_NtAllocateVirtualMemory
 Syscall_NtAllocateVirtualMemory:
-    push r10
-    xor rax, rax
-    mov r10, rcx
-    mov eax, r11d
-    ret
+    push r10        ; push r10, holding syscall instruction address, to the stack
+    xor rax, rax    ; set rax to 0
+    mov r10, rcx    ; r10 is used for the first parameter in the syscall calling convention, so move rcx to r10
+    mov eax, r11d   ; move SSN into eax so the syscall interrupt can transfer control to the correct syscall handler
+    ret             ; return, pops syscall instruction address off the stack and jumps to it
 
 global Syscall_NtProtectVirtualMemory
 Syscall_NtProtectVirtualMemory:

@@ -9,8 +9,8 @@
  */
 HMODULE 
 WINAPI 
-hlpGetModuleHandle(
-    LPCWSTR sModuleName
+HlpGetModuleHandle(
+    LPCWSTR moduleName
 )
 {
 #ifdef _M_IX86 
@@ -19,14 +19,12 @@ hlpGetModuleHandle(
     PEB* pPeb = (PEB*)__readgsqword(0x60);
 #endif
 
-    // return base address of a calling module
-    if (sModuleName == NULL)
+    if (moduleName == NULL)
         return (HMODULE)(pPeb->ImageBaseAddress);
 
-    PEB_LDR_DATA* Ldr = pPeb->Ldr;
-    LIST_ENTRY* ModuleList = NULL;
-
-    ModuleList = &Ldr->InMemoryOrderModuleList;
+    PEB_LDR_DATA* Ldr           = pPeb->Ldr;
+    LIST_ENTRY* ModuleList      = NULL;
+    ModuleList                  = &Ldr->InMemoryOrderModuleList;
     LIST_ENTRY* pStartListEntry = ModuleList->Flink;
 
     // start from beginning of InMemoryOrderModuleList and walk all list entries
@@ -39,7 +37,7 @@ hlpGetModuleHandle(
         LDR_DATA_TABLE_ENTRY* pEntry = (LDR_DATA_TABLE_ENTRY*)((BYTE*)pListEntry - sizeof(LIST_ENTRY));
 
         // check if module is found and return its base address
-        if (strcmp((const PCHAR)pEntry->BaseDllName.Buffer, (const PCHAR)sModuleName) == 0)
+        if (strcmp((const PCHAR)pEntry->BaseDllName.Buffer, (const PCHAR)moduleName) == 0)
             return (HMODULE)pEntry->DllBase;
     }
 
@@ -55,33 +53,37 @@ hlpGetModuleHandle(
  */
 FARPROC 
 WINAPI 
-hlpGetProcAddress(
+HlpGetProcAddress(
     HMODULE hMod, 
     PCHAR sProcName
 )
 {
     PCHAR pBaseAddr = (PCHAR)hMod;
 
+    // +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~++~+ //
+    // TODO FOR YOU: Replace this approach with API Hashing+Salting //
+    // +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~++~+ //
+    
     // get pointers to headers and directories
-    IMAGE_DOS_HEADER* pDosHdr = (IMAGE_DOS_HEADER*)pBaseAddr;
-    IMAGE_NT_HEADERS* pNTHdr = (IMAGE_NT_HEADERS*)(pBaseAddr + pDosHdr->e_lfanew);
-    IMAGE_OPTIONAL_HEADER* pOptionalHdr = &pNTHdr->OptionalHeader;
-    IMAGE_DATA_DIRECTORY* pExportDataDir = (IMAGE_DATA_DIRECTORY*)(&pOptionalHdr->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT]);
+    IMAGE_DOS_HEADER* pDosHdr              = (IMAGE_DOS_HEADER*)pBaseAddr;
+    IMAGE_NT_HEADERS* pNTHdr               = (IMAGE_NT_HEADERS*)(pBaseAddr + pDosHdr->e_lfanew);
+    IMAGE_OPTIONAL_HEADER* pOptionalHdr    = &pNTHdr->OptionalHeader;
+    IMAGE_DATA_DIRECTORY* pExportDataDir   = (IMAGE_DATA_DIRECTORY*)(&pOptionalHdr->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT]);
     IMAGE_EXPORT_DIRECTORY* pExportDirAddr = (IMAGE_EXPORT_DIRECTORY*)(pBaseAddr + pExportDataDir->VirtualAddress);
 
     // resolve addresses to Export Address Table, table of function names and table of ordinals
-    DWORD* pEAT = (DWORD*)(pBaseAddr + pExportDirAddr->AddressOfFunctions);
+    DWORD* pEAT         = (DWORD*)(pBaseAddr + pExportDirAddr->AddressOfFunctions);
     DWORD* pFuncNameTbl = (DWORD*)(pBaseAddr + pExportDirAddr->AddressOfNames);
-    WORD* pHintsTbl = (WORD*)(pBaseAddr + pExportDirAddr->AddressOfNameOrdinals);
+    WORD* pHintsTbl     = (WORD*)(pBaseAddr + pExportDirAddr->AddressOfNameOrdinals);
 
     // function address we're looking for
-    FARPROC pProcAddr = NULL;
+    FARPROC pProcAddr   = NULL;
 
     // resolve function by ordinal
     if (((DWORD_PTR)sProcName >> 16) == 0) 
     {
         WORD ordinal = (WORD)sProcName & 0xFFFF;    // convert to WORD
-        DWORD Base = pExportDirAddr->Base;          // first ordinal number
+        DWORD Base   = pExportDirAddr->Base;        // first ordinal number
 
         // check if ordinal is not out of scope
         if (ordinal < Base || ordinal >= Base + pExportDirAddr->NumberOfFunctions)

