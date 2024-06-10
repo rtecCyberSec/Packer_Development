@@ -2,7 +2,7 @@
 
 So you decided to go the C way for your implementation.
 
-![c](https://github.com/S3cur3Th1sSh1t/maldevx33fcon/assets/27858067/a5367ed4-d16c-456c-959b-583ef2fc9ab4)
+<img src="https://github.com/rtecCyberSec/Packer-Development/assets/51821028/21d7c907-6449-42f7-a1ae-9320a82076a6" width="200">
 
 
 ## Getting started / setup
