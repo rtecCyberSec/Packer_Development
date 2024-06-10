@@ -5,7 +5,7 @@ This repository was created in conjunction with a Packer Development Workshop he
 
 <br>
 <div align="center">
-    <img src="https://github.com/S3cur3Th1sSh1t/maldevx33fcon/assets/27858067/2f9af884-b5a8-4353-abeb-9fd78d90e216" width="500">
+    <img src="https://github.com/rtecCyberSec/Packer-Development/assets/27858067/1ce772fd-92b2-4dea-8c0c-30d77a2b76a2" width="500">
 </div>
 <br>
 
