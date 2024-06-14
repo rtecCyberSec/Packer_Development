@@ -95,7 +95,7 @@ fn main() {
         }
     }
 
-    if input_file != "" {
+    if shellcode_file != "" {
         embedded_payload = false;
     }
 
