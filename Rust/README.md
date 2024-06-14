@@ -2,8 +2,7 @@
 
 So you decided to go the Rusty way for your implementation.
 
-![Rust](https://github.com/rtecCyberSec/Packer-Development/assets/27858067/2bc21ad8-5c9f-4286-9e5a-d6bae2337208)
-
+![rust](https://github.com/rtecCyberSec/Packer_Development/assets/27858067/05a1a4ff-37c6-4b65-a96d-5667e13c6f05)
 
 ## Getting started / setup
 
