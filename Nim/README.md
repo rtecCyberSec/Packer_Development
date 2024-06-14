@@ -2,7 +2,8 @@
 
 So you decided to go the Nim way for your implementation.
 
-![nim](https://github.com/rtecCyberSec/Packer-Development/assets/27858067/09428c3f-b458-4d2a-84f3-b5aeecc64f3e)
+![nim](https://github.com/rtecCyberSec/Packer_Development/assets/27858067/cb742cf5-ecf5-4947-952f-660f97045d75)
+
 
 ## Getting started / setup
 
