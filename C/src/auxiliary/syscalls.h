@@ -74,7 +74,7 @@ typedef struct _SYSCALL_ENTRY {
 // --------------------------------------
 
 // syscall sorting table
-#define SYSCALL_TABLE_SIZE 256
+#define SYSCALL_TABLE_SIZE 1024
 SYSCALL_ENTRY* syscallTable[SYSCALL_TABLE_SIZE] = { 0 };
 
 VOID PrepareSyscall(DWORD dwSycallNr, PVOID dw64Gate);
@@ -170,7 +170,7 @@ PopulateSyscallMap(
             SYSCALL_ENTRY* currentSyscall = (SYSCALL_ENTRY*)malloc(sizeof(SYSCALL_ENTRY));
             currentSyscall->syscallNumber = 0; // will be filled later when sorting
             currentSyscall->syscallInstructionAddress =  syscallInstructionAddr;
-            RtlCopyMemory(currentSyscall->syscallName, sTmpFuncName, strlen(sTmpFuncName));
+            RtlCopyMemory(currentSyscall->syscallName, sTmpFuncName, strlen(sTmpFuncName) + 1);
             syscallTable[currentSyscallNumber] = currentSyscall;
             currentSyscallNumber++;
         }
