@@ -5,9 +5,10 @@ This repository was created in conjunction with a Packer Development Workshop he
 
 <br>
 <div align="center">
-    <img src="https://github.com/rtecCyberSec/Packer-Development/assets/27858067/1ce772fd-92b2-4dea-8c0c-30d77a2b76a2" width="500">
+    <img src="https://github.com/rtecCyberSec/Packer_Development/assets/27858067/756b23d5-8c13-4011-ab43-02147d2c12e8" width="500">
 </div>
 <br>
+
 
 The goal of the workshop is to show participants the concept of packed malware. How does a Packer work technically? Using public toolings without modifications from Github (including this repo's examples ;-)) will nowadays lead to Red Teams or Threat Actors getting caught real quick. To avoid detections, it's therefore needed to build custom tooling and/or to learn about Malware Development in general. Automating the process of taking an input payload, encrypting it, building loader code and compiling that afterward saves a lot of time for operators. 
 
