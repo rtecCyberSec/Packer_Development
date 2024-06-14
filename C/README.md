@@ -2,7 +2,8 @@
 
 So you decided to go the C way for your implementation.
 
-<img src="https://github.com/rtecCyberSec/Packer-Development/assets/51821028/4ac96d92-418a-465d-9f76-de3b2e74b981" width="200">
+<img src="https://github.com/rtecCyberSec/Packer_Development/assets/27858067/7098dfac-5c70-4234-a489-5f23adf35bfa" width="200">
+
 
 ## Getting started / setup
 
