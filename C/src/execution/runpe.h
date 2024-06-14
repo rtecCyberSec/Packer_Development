@@ -221,7 +221,7 @@ RunPortableExecutable(
 
     if (pImageBase != preferAddr) 
     {
-        if (applyReloc((SIZE_T)pImageBase, (SIZE_T)preferAddr, pImageBase, ntHeader->OptionalHeader.SizeOfImage))
+        if (ApplyReloc((SIZE_T)pImageBase, (SIZE_T)preferAddr, pImageBase, ntHeader->OptionalHeader.SizeOfImage))
         {
             DBG("    [+] Relocation Fixed.");
         }
