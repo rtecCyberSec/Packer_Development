@@ -9,7 +9,9 @@ RUN apt update \
         gcc-mingw-w64 \
         nasm \
         python3 \
+        cargo \
  && apt autoremove -y \
  && rm -rf /var/lib/apt/lists/*
+ && curl https://nim-lang.org/choosenim/init.sh -sSf | sh
  
  LABEL org.opencontainers.image.source=https://github.com/rtecCyberSec/Packer_Development
