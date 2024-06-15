@@ -34,6 +34,9 @@ const full_stub = slurp"template.nim"
 
 # TODO: Add compiler flags, you want to use for the loader
 var cmd = "nim c -d:release --opt:speed --out:loader.exe "
+# enable cross compilation from linux
+when defined(linux):
+    cmd = cmd & "-d=mingw "
 
 import sequtils
 
