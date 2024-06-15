@@ -154,13 +154,14 @@ fn main() {
     
     compile_command.push_str(" --manifest-path ./loader/Cargo.toml");
 
+    #[cfg(target_os = "linux")]
+    compile_command.push_str(" --target x86_64-pc-windows-gnu");
+
     // create a new subdirectory ./loader - we need to create a new directory for the loader source code plus
     // add a Cargo.toml file to it
     std::fs::create_dir_all("loader").expect("Unable to create directory");
     // create another subdirectors ./loader/src
     std::fs::create_dir_all("loader/src").expect("Unable to create directory");
-    // copy Cargo.toml from CWD to ./loader. 
-    std::fs::copy("Cargo.toml", "loader/Cargo.toml").expect("Unable to copy file");
 
     // TODO: if you want to create a loader DLL, you need to save the file as loader/src/lib.rs instead of loader/src/main.rs
     // Also make sure to delete old existing files, as otherwise cargo will fail to compile with main.rs and lib.rs being there at the same time.
