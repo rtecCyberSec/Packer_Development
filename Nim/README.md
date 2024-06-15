@@ -13,7 +13,7 @@ Download & install [Nim](https://nim-lang.org/install.html) from the website. Ve
 Download & install [MinGW-w64](https://sourceforge.net/projects/mingw-w64/files/).
 
 <u>Linux</u>:
-`apt-get install mingw-64`
+`apt-get install mingw-w64`
 
 <u>Install dependencies</u>
 `nimble install ptr_math checksums NimProtect winim https://github.com/nbaertsch/nimvoke`
